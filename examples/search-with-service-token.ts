@@ -8,7 +8,7 @@
  * Credentials come from the environment. A client_secret in source is not a
  * secret.
  */
-import { AthenaeumApiError, AthenaeumClient } from "@xfeatures/athenaeum-sdk";
+import { AthenaeumApiError, AthenaeumClient } from "@xfeaturesgroup/athenaeum";
 
 const ACCOUNT_URL = process.env["ACCOUNT_URL"] ?? "https://auth.xfeatures.net";
 const ATHENAEUM_URL = process.env["ATHENAEUM_URL"] ?? "https://athenaeum.xfeatures.net";
