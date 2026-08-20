@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, typecheck, test and pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Build order matters: the SDK depends on the types through a file: ref.
+      - name: Build @xfeatures/athenaeum-types
+        working-directory: packages/athenaeum-types
+        run: npm install && npm run build && npx tsc -p tsconfig.json --noEmit
+
+      - name: Build and test @xfeatures/athenaeum-sdk
+        working-directory: packages/athenaeum-sdk
+        run: npm install && npm run build && npm test
+
+      # Proves what would ship, without publishing anything. Publishing stays
+      # off: every package is private and carries no npm token.
+      - name: Pack dry-run
+        run: |
+          for pkg in athenaeum-types athenaeum-sdk; do
+            echo "--- $pkg ---"
+            (cd "packages/$pkg" && npm pack --dry-run)
+          done
+
+      - name: Packages are not publishable
+        run: |
+          for pkg in athenaeum-types athenaeum-sdk; do
+            private=$(node -p "require('./packages/$pkg/package.json').private === true")
+            if [ "$private" != "true" ]; then
+              echo "packages/$pkg is not marked private -- npm publishing must stay disabled."
+              exit 1
+            fi
+          done
+          echo "Both packages are private."
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [athenaeum-types, athenaeum-sdk]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - working-directory: packages/${{ matrix.package }}
+        run: npm install --package-lock-only && npm audit --audit-level=high
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          VERSION=8.24.3
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+      # Both, and verbosely: the working tree says nothing about what an earlier
+      # commit still holds, and a scan that quietly covers nothing looks exactly
+      # like a clean one.
+      - name: Scan full history
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --verbose --exit-code 1
+      - name: Scan the working tree
+        run: gitleaks detect --source . --no-git --config .gitleaks.toml --redact --verbose --exit-code 1
