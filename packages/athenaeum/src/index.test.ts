@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AthenaeumApiError, AthenaeumClient } from "./index.js";
+import { AthenaeumApiError, AthenaeumClient } from "./index.js";  // re-exported from client.ts via index.ts
 
 function fakeFetch(handler: (url: string, init: RequestInit) => Response): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {

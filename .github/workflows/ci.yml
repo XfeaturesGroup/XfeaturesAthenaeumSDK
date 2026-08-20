@@ -19,48 +19,71 @@ jobs:
         with:
           node-version: 20
 
-      # Build order matters: the SDK depends on the types through a file: ref.
-      - name: Build @xfeatures/athenaeum-types
-        working-directory: packages/athenaeum-types
-        run: npm install && npm run build && npx tsc -p tsconfig.json --noEmit
+      - name: Install
+        working-directory: packages/athenaeum
+        run: npm install
 
-      - name: Build and test @xfeatures/athenaeum-sdk
-        working-directory: packages/athenaeum-sdk
-        run: npm install && npm run build && npm test
+      - name: Typecheck
+        working-directory: packages/athenaeum
+        run: npm run typecheck
 
-      # Proves what would ship, without publishing anything. Publishing stays
-      # off: every package is private and carries no npm token.
+      - name: Build
+        working-directory: packages/athenaeum
+        run: npm run build
+
+      - name: Test
+        working-directory: packages/athenaeum
+        run: npm test
+
+      # Proves what would actually publish, without publishing. This job never
+      # runs `npm publish` -- release.yml owns that, gated on a version tag.
       - name: Pack dry-run
-        run: |
-          for pkg in athenaeum-types athenaeum-sdk; do
-            echo "--- $pkg ---"
-            (cd "packages/$pkg" && npm pack --dry-run)
-          done
+        working-directory: packages/athenaeum
+        run: npm pack --dry-run
 
-      - name: Packages are not publishable
+      - name: Tarball contains no source, tests or scratch files
+        working-directory: packages/athenaeum
         run: |
-          for pkg in athenaeum-types athenaeum-sdk; do
-            private=$(node -p "require('./packages/$pkg/package.json').private === true")
-            if [ "$private" != "true" ]; then
-              echo "packages/$pkg is not marked private -- npm publishing must stay disabled."
-              exit 1
-            fi
+          npm pack --silent
+          tarball=$(ls xfeaturesgroup-athenaeum-*.tgz)
+          list=$(tar -tzf "$tarball")
+          echo "$list"
+          if echo "$list" | grep -qE '\.test\.|package/src/'; then
+            echo "Tarball contains source or test files -- fix package.json's files list."
+            exit 1
+          fi
+          for required in LICENSE README.md package.json dist/index.js dist/index.d.ts; do
+            echo "$list" | grep -q "package/$required" || { echo "Missing $required from the tarball."; exit 1; }
           done
-          echo "Both packages are private."
+          rm -f "$tarball"
+          echo "Tarball contents verified."
 
-  audit:
-    name: Dependency audit
+  publishable-guard:
+    name: This package is deliberately publishable
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [athenaeum-types, athenaeum-sdk]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - working-directory: packages/${{ matrix.package }}
+      - run: |
+          node -e "
+            const pkg = require('./packages/athenaeum/package.json');
+            if (pkg.private === true) { console.error('athenaeum is marked private -- this package is meant to publish.'); process.exit(1); }
+            if (pkg.publishConfig?.access !== 'public') { console.error('publishConfig.access must be \"public\" for a scoped package.'); process.exit(1); }
+            if (!pkg.repository?.url?.includes('XfeaturesAthenaeumSDK')) { console.error('repository.url must point at this repository, exactly, for Trusted Publishing to match.'); process.exit(1); }
+            console.log('athenaeum: publishable and correctly configured.');
+          "
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - working-directory: packages/athenaeum
         run: npm install --package-lock-only && npm audit --audit-level=high
 
   secrets:
@@ -76,9 +99,6 @@ jobs:
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
             | tar -xz -C /usr/local/bin gitleaks
           gitleaks version
-      # Both, and verbosely: the working tree says nothing about what an earlier
-      # commit still holds, and a scan that quietly covers nothing looks exactly
-      # like a clean one.
       - name: Scan full history
         run: gitleaks detect --source . --config .gitleaks.toml --redact --verbose --exit-code 1
       - name: Scan the working tree

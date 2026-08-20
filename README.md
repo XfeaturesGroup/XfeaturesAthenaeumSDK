@@ -3,14 +3,14 @@
 **Typed TypeScript client for [Xfeatures Athenaeum](https://github.com/XfeaturesGroup/XfeaturesAthenaeum).**
 
 [![CI](https://github.com/XfeaturesGroup/XfeaturesAthenaeumSDK/actions/workflows/ci.yml/badge.svg)](https://github.com/XfeaturesGroup/XfeaturesAthenaeumSDK/actions/workflows/ci.yml)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](packages/athenaeum-types)
-[![Dependencies](https://img.shields.io/badge/runtime_deps-none-brightgreen)](packages/athenaeum-sdk/package.json)
+[![npm](https://img.shields.io/npm/v/@xfeaturesgroup/athenaeum)](https://www.npmjs.com/package/@xfeaturesgroup/athenaeum)
+[![Dependencies](https://img.shields.io/badge/runtime_deps-none-brightgreen)](packages/athenaeum/package.json)
 [![Licence](https://img.shields.io/badge/licence-proprietary-lightgrey)](LICENSE)
 
 ## Your first authenticated request
 
 ```ts
-import { AthenaeumClient } from "@xfeatures/athenaeum-sdk";
+import { AthenaeumClient } from "@xfeaturesgroup/athenaeum";
 
 // 1. Get a token from Xfeatures Account (service application, client_credentials).
 const auth = await fetch("https://auth.xfeatures.net/oauth/token", {
@@ -41,28 +41,22 @@ dependencies, and nothing to configure globally.
 
 ## Install
 
-Not published to npm. Consume it from this repository:
-
 ```bash
-npm install github:XfeaturesGroup/XfeaturesAthenaeumSDK#main --workspace-root
+npm install @xfeaturesgroup/athenaeum
 ```
 
-For local development against a checkout, use a `file:` reference:
+For local development against a checkout instead, use a `file:` reference:
 
 ```jsonc
-{ "dependencies": { "@xfeatures/athenaeum-sdk": "file:../XfeaturesAthenaeumSDK/packages/athenaeum-sdk" } }
+{ "dependencies": { "@xfeaturesgroup/athenaeum": "file:../XfeaturesAthenaeumSDK/packages/athenaeum" } }
 ```
 
 ## What is in here
 
-| Package | What it is |
-|---|---|
-| [`@xfeatures/athenaeum-types`](packages/athenaeum-types) | Hand-authored TypeScript types for the REST surface. No runtime code. |
-| [`@xfeatures/athenaeum-sdk`](packages/athenaeum-sdk) | A thin `fetch` client built on those types. No dependencies beyond the platform `fetch`. |
-
-They live together because the SDK is the only consumer of the types, and
-splitting them across repositories would buy a second release train and nothing
-else.
+One package: [`packages/athenaeum`](packages/athenaeum) — types and the REST
+client together. The client is the only real consumer of the types, and a
+two-package split bought nothing but a second version number to keep in sync,
+so this repository publishes a single `@xfeaturesgroup/athenaeum`.
 
 ## The client
 
@@ -89,7 +83,7 @@ Failures throw `AthenaeumApiError`, carrying the server's stable `code`, its
 message, the HTTP status and the `request_id` to quote in a bug report.
 
 ```ts
-import { AthenaeumApiError } from "@xfeatures/athenaeum-sdk";
+import { AthenaeumApiError } from "@xfeaturesgroup/athenaeum";
 
 try {
   await athenaeum.getDocument("handbook");
@@ -122,11 +116,20 @@ There is no publish method, because no transport exposes one.
 ## Development
 
 ```bash
-cd packages/athenaeum-types && npm install && npm run build
-cd ../athenaeum-sdk        && npm install && npm run build && npm test
+cd packages/athenaeum && npm install && npm run build && npm test
 ```
 
-Build order matters: the SDK depends on the types via a `file:` reference.
+## Releasing
+
+Publishing happens only from a pushed `v0.x.y` tag, via
+[`.github/workflows/publish.yml`](.github/workflows/publish.yml) — never on an
+ordinary push to `main`. That workflow runs every gate (typecheck, test, build,
+audit, tarball-content verification) non-interactively, then waits for a human
+approval in the `npm-publish` GitHub environment before the package actually
+reaches the registry. Publishing uses npm Trusted Publishing (OIDC): no
+`NPM_TOKEN` is stored in this repository at any point, and the published
+package carries npm's provenance attestation back to the exact workflow run
+that built it.
 
 ## Licence
 

@@ -11,24 +11,7 @@ import type {
   ProposeDocumentRequest,
   SearchRequest,
   SearchResponse
-} from "@xfeatures/athenaeum-types";
-
-export type {
-  ApiErrorPayload,
-  Classification,
-  DocumentContentDTO,
-  DocumentDTO,
-  FactDTO,
-  FactsListResponse,
-  FeedbackRequest,
-  PlanDTO,
-  PolicyDTO,
-  ProductDTO,
-  ProposeDocumentRequest,
-  SearchRequest,
-  SearchResponse,
-  SearchResultDTO
-} from "@xfeatures/athenaeum-types";
+} from "./types.js";
 
 /**
  * Thrown for every non-2xx response. Carries the same envelope Athenaeum
