@@ -104,6 +104,16 @@ export interface SearchRequest {
   domain?: string;
   language?: string;
   limit?: number;
+  /**
+   * Which half of the knowledge base to consult. Facts are exact stored values
+   * matched by wording in the database; documents are passages retrieved
+   * semantically. Both by default, and fact results come first when both
+   * answer -- a stored value answers "what is X" better than a passage that
+   * mentions X.
+   */
+  include?: "documents" | "facts" | "all";
+  /** Narrows fact results to one namespace the caller can already read. Never widens. */
+  namespace?: string;
 }
 
 export interface FeedbackRequest {
@@ -146,6 +156,17 @@ export interface SearchResponse {
 export interface FactResponse {
   request_id: string;
   fact: FactDTO;
+}
+
+/** One namespace and how many facts in it this caller may read. */
+export interface FactNamespaceDTO {
+  namespace: string;
+  factCount: number;
+}
+
+export interface FactNamespacesResponse {
+  request_id: string;
+  namespaces: FactNamespaceDTO[];
 }
 
 export interface FactsListResponse {

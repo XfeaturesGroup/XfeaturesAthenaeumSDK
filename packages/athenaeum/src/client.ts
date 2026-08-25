@@ -3,6 +3,7 @@ import type {
   DocumentContentDTO,
   DocumentDTO,
   FactDTO,
+  FactNamespacesResponse,
   FactsListResponse,
   FeedbackRequest,
   PlanDTO,
@@ -92,9 +93,26 @@ export class AthenaeumClient {
     return json as T;
   }
 
-  /** Semantic search. Prefer the deterministic getters below when you know exactly what you need. */
+  /**
+   * Search both halves of the knowledge base. Each result says which it is:
+   * `fact` carries a stored value verbatim, `document_chunk` carries a passage.
+   *
+   * Prefer the deterministic getters below when you know exactly what you need.
+   * The fact half matches wording rather than meaning, so an empty result means
+   * nothing matched those words -- not that no such fact exists.
+   */
   async search(body: SearchRequest): Promise<SearchResponse> {
     return this.request<SearchResponse>("/v1/knowledge/search", { method: "POST", body: JSON.stringify(body) });
+  }
+
+  /**
+   * The fact namespaces this caller can read, with a count each.
+   *
+   * Both are a projection of the caller's own permissions: a namespace it
+   * cannot read does not appear, and a count covers only rows it may see.
+   */
+  async listFactNamespaces(): Promise<FactNamespacesResponse> {
+    return this.request<FactNamespacesResponse>("/v1/facts");
   }
 
   async getFact(namespace: string, key: string): Promise<FactDTO> {

@@ -66,7 +66,8 @@ new AthenaeumClient({ baseUrl, token, fetch? })
 
 | Method | Returns |
 |---|---|
-| `search(body)` | Evidence chunks with citations, or `NO_RELIABLE_MATCH` |
+| `search(body)` | Facts and document passages together, each labelled by `type`, or `NO_RELIABLE_MATCH`. `include` narrows it to one half |
+| `listFactNamespaces()` | The fact namespaces this caller can read, with counts |
 | `getFact(namespace, key)` | One exact fact |
 | `listFacts(namespace, { limit, offset })` | Facts in a namespace |
 | `getDocument(idOrSlug, { includeContent })` | Document metadata, optionally with full text |
